@@ -1,50 +1,83 @@
 import streamlit as st
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# -----------------------------
+# Load and Prepare Data
+# -----------------------------
 @st.cache_data
 def load_data():
-    # Load both CSV files
-    movies = pd.read_csv("movies.csv")
-    ratings = pd.read_csv("ratings.csv")
+    df = pd.read_csv("movies.csv")
 
-    # Clean up and normalize column names
-    movies.columns = movies.columns.str.strip()
-    ratings.columns = ratings.columns.str.strip()
+    # Combine important text features
+    df['combined'] = (
+        df['genres'].fillna('') + ' ' +
+        df['description'].fillna('') + ' ' +
+        df['director'].fillna('') + ' ' +
+        df['cast'].fillna('')
+    )
 
-    # Rename possible variants of movieId
-    rename_map = {'movie_id': 'movieId', 'MovieID': 'movieId', 'id': 'movieId'}
-    movies.rename(columns=rename_map, inplace=True)
-    ratings.rename(columns=rename_map, inplace=True)
+    # Convert text to feature vectors using TF-IDF
+    vectorizer = TfidfVectorizer(stop_words='english')
+    vectors = vectorizer.fit_transform(df['combined'])
 
-    # Ensure required columns exist
-    if "movieId" not in movies.columns or "movieId" not in ratings.columns:
-        st.error(f"❌ Missing 'movieId' column in one of the files!\n\n"
-                 f"Movies columns: {movies.columns.tolist()}\n"
-                 f"Ratings columns: {ratings.columns.tolist()}")
-        st.stop()
+    # Compute cosine similarity matrix
+    similarity = cosine_similarity(vectors)
 
-    # Merge datasets
-    data = pd.merge(movies, ratings, on="movieId")
+    return df, similarity
 
-    # Create user–movie rating matrix
-    pivot = data.pivot_table(index='userId', columns='title', values='rating').fillna(0)
+# -----------------------------
+# Recommendation Function
+# -----------------------------
+def recommend(movie_title, df, similarity, n=5):
+    if movie_title not in df['title'].values:
+        return []
 
-    # Compute similarity
-    similarity = cosine_similarity(pivot.T)
-    sim_df = pd.DataFrame(similarity, index=pivot.columns, columns=pivot.columns)
-    return sim_df
+    # Get index of the selected movie
+    idx = df.index[df['title'] == movie_title][0]
 
-# Load the similarity matrix
-similarity_df = load_data()
+    # Get pairwise similarity scores
+    scores = list(enumerate(similarity[idx]))
 
-# --------------------- Streamlit App ---------------------
-st.title("🎬 Movie Recommender App")
+    # Sort movies by similarity (excluding itself)
+    sorted_scores = sorted(scores, key=lambda x: x[1], reverse=True)[1:n+1]
 
-movie_name = st.selectbox("Choose a movie you like:", sorted(similarity_df.columns))
+    # Get recommended movies
+    recommended = [(df.iloc[i]['title'], df.iloc[i]['genres'], df.iloc[i]['director'], score)
+                   for i, score in sorted_scores]
+    return recommended
 
-if st.button("Recommend 🎥"):
-    st.subheader(f"Because you liked **{movie_name}**, you might also enjoy:")
-    similar_movies = similarity_df[movie_name].sort_values(ascending=False)[1:6]
-    for i, (movie, score) in enumerate(similar_movies.items(), start=1):
-        st.write(f"{i}. **{movie}**  (Similarity: {score:.2f})")
+# -----------------------------
+# Streamlit UI
+# -----------------------------
+def main():
+    st.set_page_config(page_title="🎬 Movie Recommender", layout="wide")
+    st.title("🎥 Movie Recommender System (Content-Based)")
+    st.markdown("Find movies similar to your favorites based on **genre, plot, and cast**.")
+
+    df, similarity = load_data()
+
+    # Dropdown for movie selection
+    movie_titles = df['title'].dropna().tolist()
+    selected_movie = st.selectbox("Choose a movie:", sorted(movie_titles))
+
+    # Recommend button
+    if st.button("Recommend Movies 🎞️"):
+        st.subheader(f"Because you liked **{selected_movie}**, you might also enjoy:")
+        results = recommend(selected_movie, df, similarity)
+
+        for i, (title, genre, director, score) in enumerate(results, start=1):
+            st.markdown(f"""
+            **{i}. {title}**  
+            🎭 *Genre:* {genre}  
+            🎬 *Director:* {director}  
+            🔗 *Similarity Score:* {score:.2f}
+            """)
+            st.divider()
+
+    st.markdown("---")
+    st.caption("Developed by Ayush Bhardwaj & Rishikesh | Powered by Streamlit & scikit-learn")
+
+if __name__ == "__main__":
+    main()
