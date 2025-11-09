@@ -8,15 +8,28 @@ from sklearn.metrics.pairwise import cosine_similarity
 # -----------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("movies.csv")
+    # Add column names manually (since your CSV has none)
+    columns = ['id', 'imdb_id', 'title', 'year', 'genres', 'description', 'director', 'cast']
+    df = pd.read_csv("movies.csv", names=columns)
 
-    # Combine important text features
+    # Combine key text fields
     df['combined'] = (
         df['genres'].fillna('') + ' ' +
         df['description'].fillna('') + ' ' +
         df['director'].fillna('') + ' ' +
         df['cast'].fillna('')
     )
+
+    # Vectorize and compute similarity
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    vectorizer = TfidfVectorizer(stop_words='english')
+    vectors = vectorizer.fit_transform(df['combined'])
+    similarity = cosine_similarity(vectors)
+
+    return df, similarity
+
 
     # Convert text to feature vectors using TF-IDF
     vectorizer = TfidfVectorizer(stop_words='english')
@@ -81,3 +94,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
