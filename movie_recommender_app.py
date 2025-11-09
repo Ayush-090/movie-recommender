@@ -90,8 +90,9 @@ def main():
             st.divider()
 
     st.markdown("---")
-    st.caption("Developed by Ayush Bhardwaj & Rishikesh | Powered by Streamlit & scikit-learn")
+    st.caption("Developed by KHUSHI KUMARI 😊 | Powered by Streamlit & scikit-learn")
 
 if __name__ == "__main__":
     main()
+
 
