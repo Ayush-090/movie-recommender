@@ -66,7 +66,7 @@ def recommend(movie_title, df, similarity, n=5):
 # -----------------------------
 def main():
     st.set_page_config(page_title="🎬 Movie Recommender", layout="wide")
-    st.title("🎥 Movie Recommender System (Content-Based)")
+    st.title("🎥 Movie Maanpaashand ✌️")
     st.markdown("Find movies similar to your favorites based on **genre, plot, and cast**.")
 
     df, similarity = load_data()
@@ -90,9 +90,10 @@ def main():
             st.divider()
 
     st.markdown("---")
-    st.caption("Developed by KHUSHI KUMARI 😊 | Powered by Streamlit & scikit-learn")
+    st.caption("Developed by KHUSHI KUMARI 😊")
 
 if __name__ == "__main__":
     main()
+
 
 
